@@ -1,4 +1,4 @@
 /temp*
 __pycache__
 .DS_Store
-/blender-3.0.1-linux-x64
+/blender-3.0.1-linux-x64*

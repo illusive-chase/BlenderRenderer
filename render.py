@@ -1,14 +1,9 @@
 import os
 import json
-import copy
-import sys
-import importlib
-import argparse
-from functools import partial
 from subprocess import DEVNULL, call
 import numpy as np
 from pathlib import Path
-from utils import sphere_hammersley_sequence
+from .utils import sphere_hammersley_sequence
 import tyro
 from typing import Optional
 
@@ -71,7 +66,7 @@ def render_cond(
         '--views', json.dumps(views),
         '--object', file_path.resolve().as_posix(),
         '--output_folder', output_dir.resolve().as_posix(),
-        '--resolution', resolution,
+        '--resolution', str(resolution),
     ]
     if save_mesh:
         args += ['--save_mesh']

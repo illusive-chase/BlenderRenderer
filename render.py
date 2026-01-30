@@ -28,6 +28,7 @@ def render_cond(
     num_samples: int = 32,
     verbose: bool = False,
     seed: Optional[int] = None,
+    light_seed: Optional[int] = None,
     fov_min: int = 10,
     fov_max: int = 70,
     radius_min: float = 0.3,
@@ -37,7 +38,7 @@ def render_cond(
 ) -> None:
     assert file_path.exists() and file_path.suffix in ['.ply', '.glb', '.obj', '.blend']
     output_dir.mkdir(exist_ok=True, parents=True)
-    assert fov_max <= fov_max
+    assert fov_min <= fov_max
     assert radius_min <= radius_max
     assert resolution > 0 and num_views > 0
 
@@ -61,7 +62,7 @@ def render_cond(
     radius_max = base_radius / np.sin(fov_min / 360 * np.pi)
     k_min = 1 / radius_max**2
     k_max = 1 / radius_min**2
-    ks = np.random.uniform(k_min, k_max, (1000000,))
+    ks = np.random.uniform(k_min, k_max, (num_views,))
     radius = [1 / np.sqrt(k) for k in ks]
     fov = [2 * np.arcsin(base_radius / r) for r in radius]
     views = [{'yaw': y, 'pitch': p, 'radius': r, 'fov': f} for y, p, r, f in zip(yaws, pitchs, radius, fov)]
@@ -75,6 +76,8 @@ def render_cond(
         '--resolution', str(resolution),
         '--num_samples', str(num_samples),
     ]
+    if light_seed is not None:
+        args += ['--seed', str(light_seed)]
     if save_mesh:
         args += ['--save_mesh']
     if file_path.suffix == '.blend':

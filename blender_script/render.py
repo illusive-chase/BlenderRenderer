@@ -1,5 +1,4 @@
 import argparse
-import glob
 import json
 import math
 import os
@@ -178,39 +177,80 @@ def init_camera():
     cam_constraint.target = cam_empty
     return cam
 
-def init_lighting():
+def init_lighting_(seed):
     # Clear existing lights
     bpy.ops.object.select_all(action="DESELECT")
     bpy.ops.object.select_by_type(type="LIGHT")
     bpy.ops.object.delete()
     
+    rng = np.random.RandomState(seed)
+    
     # Create key light
     default_light = bpy.data.objects.new("Default_Light", bpy.data.lights.new("Default_Light", type="POINT"))
     bpy.context.collection.objects.link(default_light)
-    default_light.data.energy = 1000
-    default_light.location = (4, 1, 6)
+    default_light.data.energy = max(0, rng.normal(1000, 200))
+    rpy = rng.rand(3) * 2 * np.pi
+    default_light.location = max(1.0, rng.normal(6.0, 1.0)) * np.array([
+        np.cos(rpy[0]) * np.sin(rpy[1] * 0.25),
+        np.sin(rpy[0]) * np.sin(rpy[1] * 0.25),
+        np.cos(rpy[1] * 0.25),
+    ])
+    default_light.scale = rng.normal((1, 1, 1), 0.2)
+    color = rng.normal((1, 1, 1), 0.2)
+    default_light.data.color = np.clip(color / max(1e-3, color.max()), 0, 1)
+    default_light.data.shadow_soft_size = max(0, rng.normal(0.2, 0.1))
     default_light.rotation_euler = (0, 0, 0)
     
     # create top light
     top_light = bpy.data.objects.new("Top_Light", bpy.data.lights.new("Top_Light", type="AREA"))
     bpy.context.collection.objects.link(top_light)
-    top_light.data.energy = 10000
-    top_light.location = (0, 0, 10)
-    top_light.scale = (100, 100, 100)
+    top_light.data.energy = max(0, rng.normal(10000, 2000))
+    top_light.location = rng.normal((0, 0, 10), 2.0)
+    top_light.scale = rng.normal((100, 100, 100), 20.0)
+    color = rng.normal((1, 1, 1), 0.2)
+    top_light.data.color = np.clip(color / max(1e-3, color.max()), 0, 1)
+    top_light.data.shadow_soft_size = max(0, rng.normal(0.2, 0.1))
     
     # create bottom light
     bottom_light = bpy.data.objects.new("Bottom_Light", bpy.data.lights.new("Bottom_Light", type="AREA"))
     bpy.context.collection.objects.link(bottom_light)
-    bottom_light.data.energy = 1000
-    bottom_light.location = (0, 0, -10)
+    bottom_light.data.energy = max(0, rng.normal(1000, 200))
+    bottom_light.location = rng.normal((0, 0, -10), 2.0)
+    bottom_light.scale = rng.normal((1, 1, 1), 0.2)
+    color = rng.normal((1, 1, 1), 0.2)
+    bottom_light.data.color = np.clip(color / max(1e-3, color.max()), 0, 1)
+    bottom_light.data.shadow_soft_size = max(0, rng.normal(0.2, 0.1))
     bottom_light.rotation_euler = (0, 0, 0)
-    
-    return {
-        "default_light": default_light,
-        "top_light": top_light,
-        "bottom_light": bottom_light
-    }
 
+def init_lighting(seed):
+    # Clear existing lights
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.ops.object.select_by_type(type="LIGHT")
+    bpy.ops.object.delete()
+    
+    rng = np.random.RandomState(seed)
+
+    # Random place lights
+    num_lights = rng.randint(1, 4)
+    total_strength = max(0.5, rng.normal(5, 1.5))
+    ratio = rng.rand(num_lights) + 0.1
+    ratio = ratio / ratio.sum()
+    for i in range(num_lights):
+        new_light = bpy.data.objects.new(f"Light_{i}", bpy.data.lights.new(f"Light_{i}", type="POINT"))
+        bpy.context.collection.objects.link(new_light)
+        
+        new_light_distance = 1 / rng.uniform(1/100, 1/10)
+        new_light_dir = rng.randn(3)
+        new_light_dir[2] += 1.5
+        new_light_dir = new_light_dir / np.linalg.norm(new_light_dir)
+        new_light_location = new_light_dir * new_light_distance
+        new_light_strength = total_strength * ratio[i]
+        
+        new_light.location = (new_light_location[0], new_light_location[1], new_light_location[2])
+        color = rng.normal((1, 1, 1), 0.2)
+        new_light.data.color = np.clip(color / max(1e-3, color.max()), 0, 1)
+        new_light.data.energy = new_light_strength * new_light_distance**2 * 31.4
+        new_light.data.shadow_soft_size = rng.uniform(0.05, 0.1 * new_light_distance)
 
 def load_object(object_path: str) -> None:
     """Loads a model with a supported file extension into the scene.
@@ -443,7 +483,7 @@ def main(arg):
     
     # Initialize camera and lighting
     cam = init_camera()
-    init_lighting()
+    init_lighting(arg.seed)
     print('[INFO] Camera and lighting initialized.')
 
     # Override material
@@ -477,10 +517,10 @@ def main(arg):
         # Render the scene
         bpy.ops.render.render(write_still=True)
         bpy.context.view_layer.update()
-        for name, output in outputs.items():
-            ext = EXT[output.format.file_format]
-            path = glob.glob(f'{output.file_slots[0].path}*.{ext}')[0]
-            os.rename(path, f'{output.file_slots[0].path}.{ext}')
+        # for name, output in outputs.items():
+        #     ext = EXT[output.format.file_format]
+        #     path = glob.glob(f'{output.file_slots[0].path}*.{ext}')[0]
+        #     os.rename(path, f'{output.file_slots[0].path}.{ext}')
             
         # Save camera parameters
         metadata = {
@@ -517,6 +557,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_folder', type=str, default='/tmp', help='The path the output will be dumped to.')
     parser.add_argument('--resolution', type=int, default=512, help='Resolution of the images.')
     parser.add_argument('--num_samples', type=int, default=128)
+    parser.add_argument('--seed', type=int, default=None, help='Random seed for lighting.')
     parser.add_argument('--engine', type=str, default='CYCLES', help='Blender internal engine for rendering. E.g. CYCLES, BLENDER_EEVEE, ...')
     parser.add_argument('--geo_mode', action='store_true', help='Geometry mode for rendering.')
     parser.add_argument('--save_depth', action='store_true', help='Save the depth maps.')

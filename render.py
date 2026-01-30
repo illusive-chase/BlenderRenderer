@@ -1,11 +1,13 @@
-import os
 import json
-from subprocess import DEVNULL, call
-import numpy as np
+import os
 from pathlib import Path
-from .utils import sphere_hammersley_sequence
-import tyro
+from subprocess import DEVNULL, call
 from typing import Optional
+
+import numpy as np
+import tyro
+
+from utils import sphere_hammersley_sequence
 
 BLENDER_LINK = 'https://download.blender.org/release/Blender3.0/blender-3.0.1-linux-x64.tar.xz'
 BLENDER_INSTALLATION_PATH = os.path.dirname(__file__)
@@ -23,18 +25,21 @@ def render_cond(
     *,
     output_dir: Path,
     num_views: int,
+    num_samples: int = 32,
     verbose: bool = False,
     seed: Optional[int] = None,
     fov_min: int = 10,
     fov_max: int = 70,
-    base_radius: float = np.sqrt(3) / 2,
+    radius_min: float = 0.3,
+    radius_max: float = 0.8,
     save_mesh: bool = False,
-    resolution: int = 1024,
+    resolution: int = 518,
 ) -> None:
     assert file_path.exists() and file_path.suffix in ['.ply', '.glb', '.obj', '.blend']
     output_dir.mkdir(exist_ok=True, parents=True)
     assert fov_max <= fov_max
-    assert resolution > 0 and base_radius > 0 and num_views > 0
+    assert radius_min <= radius_max
+    assert resolution > 0 and num_views > 0
 
     if seed is not None:
         np.random.seed(seed)
@@ -51,6 +56,7 @@ def render_cond(
         y, p = sphere_hammersley_sequence(i, num_views, offset)
         yaws.append(y)
         pitchs.append(p)
+    base_radius = np.random.rand() * (radius_max - radius_min) + radius_min
     radius_min = base_radius / np.sin(fov_max / 360 * np.pi)
     radius_max = base_radius / np.sin(fov_min / 360 * np.pi)
     k_min = 1 / radius_max**2
@@ -67,6 +73,7 @@ def render_cond(
         '--object', file_path.resolve().as_posix(),
         '--output_folder', output_dir.resolve().as_posix(),
         '--resolution', str(resolution),
+        '--num_samples', str(num_samples),
     ]
     if save_mesh:
         args += ['--save_mesh']

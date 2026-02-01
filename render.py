@@ -5,7 +5,6 @@ from subprocess import DEVNULL, call
 from typing import Optional
 
 import numpy as np
-import tyro
 
 from utils import sphere_hammersley_sequence
 
@@ -30,11 +29,12 @@ def render_cond(
     seed: Optional[int] = None,
     light_seed: Optional[int] = None,
     fov_min: int = 10,
-    fov_max: int = 100,
-    radius_min: float = 0.4,
-    radius_max: float = 0.8,
+    fov_max: int = 90,
+    radius_min: float = 0.35,
+    radius_max: float = 0.6,
     save_mesh: bool = False,
     resolution: int = 518,
+    min_pitch: Optional[float] = 0.0,
 ) -> None:
     assert file_path.exists() and file_path.suffix in ['.ply', '.glb', '.obj', '.blend']
     output_dir.mkdir(exist_ok=True, parents=True)
@@ -56,15 +56,16 @@ def render_cond(
     for i in range(num_views):
         y, p = sphere_hammersley_sequence(i, num_views, offset)
         yaws.append(y)
-        pitchs.append(p)
+        pitchs.append(abs(p - min_pitch) + min_pitch)
     base_radius = np.random.rand() * (radius_max - radius_min) + radius_min
     radius_min = base_radius / np.sin(fov_max / 360 * np.pi)
     radius_max = base_radius / np.sin(fov_min / 360 * np.pi)
     k_min = 1 / radius_max**2
     k_max = 1 / radius_min**2
     ks = np.random.uniform(k_min, k_max, (10000,))
-    radius = np.random.normal(1.0, 0.08, (10000,)) / np.sqrt(ks)
-    fov = [2 * np.arcsin(base_radius / r) for r in radius]
+    radius = 1 / np.sqrt(ks)
+    fov = 2 * np.arcsin(base_radius / radius)
+    radius = np.random.normal(1.0, 0.08, (10000,)) * radius
     
     # Randomly perturb camera placement and target
     center_perturbation = np.random.normal(0, 0.08, (10000, 3))
@@ -100,4 +101,5 @@ def render_cond(
     call(args, stdout=None if verbose else DEVNULL)
 
 if __name__ == '__main__':
+    import tyro
     tyro.cli(render_cond)

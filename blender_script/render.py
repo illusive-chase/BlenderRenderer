@@ -250,7 +250,7 @@ def init_lighting(seed):
         color = rng.normal((1, 1, 1), 0.08)
         new_light.data.color = np.clip(color / max(1e-3, color.max()), 0, 1)
         new_light.data.energy = new_light_strength * new_light_distance**2 * 31.4
-        new_light.data.shadow_soft_size = rng.uniform(0.05, 0.1 * new_light_distance)
+        new_light.data.shadow_soft_size = rng.uniform(0.05, 0.2 * new_light_distance)
 
 def load_object(object_path: str) -> None:
     """Loads a model with a supported file extension into the scene.

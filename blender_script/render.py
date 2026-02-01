@@ -247,7 +247,7 @@ def init_lighting(seed):
         new_light_strength = total_strength * ratio[i]
         
         new_light.location = (new_light_location[0], new_light_location[1], new_light_location[2])
-        color = rng.normal((1, 1, 1), 0.2)
+        color = rng.normal((1, 1, 1), 0.08)
         new_light.data.color = np.clip(color / max(1e-3, color.max()), 0, 1)
         new_light.data.energy = new_light_strength * new_light_distance**2 * 31.4
         new_light.data.shadow_soft_size = rng.uniform(0.05, 0.1 * new_light_distance)

@@ -241,7 +241,7 @@ def init_lighting(seed):
         
         new_light_distance = 1 / rng.uniform(1/100, 1/10)
         new_light_dir = rng.randn(3)
-        new_light_dir[2] += 1.5
+        new_light_dir[2] = max(0, 1.5 + new_light_dir[2] * 0.5)
         new_light_dir = new_light_dir / np.linalg.norm(new_light_dir)
         new_light_location = new_light_dir * new_light_distance
         new_light_strength = total_strength * ratio[i]
@@ -498,12 +498,24 @@ def main(arg):
         "frames": []
     }
     views = json.loads(arg.views)
+    
+    # Get the camera target object (created in init_camera)
+    cam_empty = bpy.data.objects.get("Empty")
+
     for i, view in enumerate(views):
-        cam.location = (
-            view['radius'] * np.cos(view['yaw']) * np.cos(view['pitch']),
-            view['radius'] * np.sin(view['yaw']) * np.cos(view['pitch']),
-            view['radius'] * np.sin(view['pitch'])
-        )
+        # Update camera target (look-at point)
+        if cam_empty and 'center' in view:
+            cam_empty.location = view['center']
+
+        # Calculate base camera location
+        x = view['radius'] * np.cos(view['yaw']) * np.cos(view['pitch'])
+        y = view['radius'] * np.sin(view['yaw']) * np.cos(view['pitch'])
+        z = view['radius'] * np.sin(view['pitch'])
+
+        # Apply perturbation to camera location
+        dx, dy, dz = view.get('pos_perturbation', [0, 0, 0])
+        
+        cam.location = (x + dx, y + dy, z + dz)
         cam.data.lens = 16 / np.tan(view['fov'] / 2)
         
         if arg.save_depth:

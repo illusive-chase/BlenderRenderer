@@ -30,8 +30,8 @@ def render_cond(
     seed: Optional[int] = None,
     light_seed: Optional[int] = None,
     fov_min: int = 10,
-    fov_max: int = 70,
-    radius_min: float = 0.3,
+    fov_max: int = 100,
+    radius_min: float = 0.4,
     radius_max: float = 0.8,
     save_mesh: bool = False,
     resolution: int = 518,
@@ -62,10 +62,24 @@ def render_cond(
     radius_max = base_radius / np.sin(fov_min / 360 * np.pi)
     k_min = 1 / radius_max**2
     k_max = 1 / radius_min**2
-    ks = np.random.uniform(k_min, k_max, (num_views,))
-    radius = [1 / np.sqrt(k) for k in ks]
+    ks = np.random.uniform(k_min, k_max, (10000,))
+    radius = np.random.normal(1.0, 0.08, (10000,)) / np.sqrt(ks)
     fov = [2 * np.arcsin(base_radius / r) for r in radius]
-    views = [{'yaw': y, 'pitch': p, 'radius': r, 'fov': f} for y, p, r, f in zip(yaws, pitchs, radius, fov)]
+    
+    # Randomly perturb camera placement and target
+    center_perturbation = np.random.normal(0, 0.08, (10000, 3))
+    cam_pos_perturbation = np.random.normal(0, 0.08, (10000, 3))
+    
+    views = []
+    for i, (y, p, r, f) in enumerate(zip(yaws, pitchs, radius, fov)):
+        views.append({
+            'yaw': y,
+            'pitch': p,
+            'radius': r,
+            'fov': f,
+            'center': center_perturbation[i].tolist(),
+            'pos_perturbation': cam_pos_perturbation[i].tolist()
+        })
 
     args = [
         BLENDER_PATH, '-b', '-P', os.path.join(os.path.dirname(__file__), 'blender_script', 'render.py'),

@@ -3,7 +3,7 @@ from functools import partial
 from pathlib import Path
 from typing import Optional
 
-import tqdm
+from tqdm import tqdm
 
 from render import _install_blender, render_cond
 
@@ -79,7 +79,7 @@ def render_cond_batch(
     )
     
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        list(tqdm(executor.map(worker, data), total=len(data)))
+        list(tqdm(executor.map(worker, data), total=len(data), dynamic_ncols=True))
 
 if __name__ == '__main__':
     import tyro

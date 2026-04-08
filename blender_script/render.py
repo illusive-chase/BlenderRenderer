@@ -1,8 +1,10 @@
 import argparse
+import glob
 import json
 import math
 import os
 import sys
+from pathlib import Path
 from typing import *
 
 import bpy
@@ -290,9 +292,32 @@ def load_object(object_path: str) -> None:
         import_function(directory=object_path, link=False)
     elif file_extension in {"glb", "gltf"}:
         import_function(filepath=object_path, merge_vertices=True, import_shading='NORMALS')
+    elif file_extension == "obj":
+        import_function(filepath=object_path, axis_forward='-Y', axis_up='Z')
     else:
         import_function(filepath=object_path)
-        
+
+def fix_gso_textures(object_path: str) -> None:
+    """Fix missing textures for GSO dataset (texture in ../materials/textures/)."""
+    path = Path(object_path)
+    if path.parent.name != 'meshes':
+        return
+    texture_dir = path.parent.parent / 'materials' / 'textures'
+    if not texture_dir.exists():
+        return
+    print(f"[INFO] GSO detected. Searching for textures in {texture_dir}")
+    for mat in bpy.data.materials:
+        if not mat.use_nodes:
+            continue
+        for node in mat.node_tree.nodes:
+            if node.type == 'TEX_IMAGE' and node.image and node.image.size[0] == 0:
+                img_name = os.path.basename(node.image.filepath) or node.image.name
+                candidate = texture_dir / img_name
+                if candidate.exists():
+                    print(f"[INFO] Relinking texture {img_name} -> {candidate}")
+                    node.image.filepath = str(candidate)
+                    node.image.reload()
+
 def delete_invisible_objects() -> None:
     """Deletes all invisible objects in the scene.
 
@@ -472,6 +497,7 @@ def main(arg):
     else:
         init_scene()
         load_object(arg.object)
+        fix_gso_textures(arg.object)
         if arg.split_normal:
             split_mesh_normal()
         # delete_custom_normals()
@@ -527,7 +553,8 @@ def main(arg):
             output.file_slots[0].path = os.path.join(arg.output_folder, f'{i:03d}_{name}')
             
         # Render the scene
-        bpy.ops.render.render(write_still=True)
+        if not arg.skip_render:
+            bpy.ops.render.render(write_still=True)
         bpy.context.view_layer.update()
         # for name, output in outputs.items():
         #     ext = EXT[output.format.file_format]
@@ -578,6 +605,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_mist', action='store_true', help='Save the mist distance maps.')
     parser.add_argument('--split_normal', action='store_true', help='Split the normals of the mesh.')
     parser.add_argument('--save_mesh', action='store_true', help='Save the mesh as a .ply file.')
+    parser.add_argument('--skip_render', action='store_true', help='Skip rendering, only export mesh/metadata.')
     argv = sys.argv[sys.argv.index("--") + 1:]
     args = parser.parse_args(argv)
 

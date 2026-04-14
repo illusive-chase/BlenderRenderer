@@ -44,6 +44,10 @@ def render_cond_batch(
     fov_max: int = 90,
     radius_min: float = 0.35,
     radius_max: float = 0.6,
+    camera_mode: str = 'coupled',
+    occ_min: float = 0.15,
+    occ_max: float = 0.70,
+    center_shift_max: float = 0.15,
     save_mesh: bool = False,
     resolution: int = 518,
     min_pitch: Optional[float] = 0.0,
@@ -57,9 +61,9 @@ def render_cond_batch(
     data = []
     for ext in extensions:
         data.extend(list(folder.glob(f"**/*{ext}")))
-    
+
     print(f'Found {len(data)} objects')
-    
+
     worker = partial(
         _render_wrapper,
         root_folder=folder,
@@ -73,6 +77,10 @@ def render_cond_batch(
         fov_max=fov_max,
         radius_min=radius_min,
         radius_max=radius_max,
+        camera_mode=camera_mode,
+        occ_min=occ_min,
+        occ_max=occ_max,
+        center_shift_max=center_shift_max,
         save_mesh=save_mesh,
         resolution=resolution,
         min_pitch=min_pitch,
